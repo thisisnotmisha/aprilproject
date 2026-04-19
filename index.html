@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lettrica</title>
+
+<!-- ============================================================
+     FONT — change the Google Fonts link below if you want a
+     different typeface for the letter text.
+     ============================================================ -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lora:ital@0;1&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   THEME COLORS — tweak these to change the whole look
+   ============================================================ */
+:root {
+  --camera-body:    #1a1a1a;
+  --camera-border:  #2e2e2e;
+  --shutter-color:  #c0392b;
+  --led-on:         #f1c40f;
+  --screen-bg:      #0d0d0d;
+  --screen-text:    #e8e0d0;
+  --screen-hint:    #3a3a3a;
+  --screen-green:   #4a7c59;
+  --page-bg:        #f4f0e8;
+  --film-bg:        #1a1208;
+  --stamp-color:    #c8a96e;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--page-bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 3rem 1rem 5rem;
+  font-family: 'Lora', serif;
+}
+
+/* ── Camera body ─────────────────────────────────────── */
+.camera {
+  width: 400px;
+  background: var(--camera-body);
+  border-radius: 20px;
+  padding: 20px 22px 22px;
+  border: 2px solid var(--camera-border);
+  position: relative;
+}
+
+.strap-lug {
+  position: absolute;
+  top: -9px;
+  width: 20px; height: 11px;
+  background: #2a2a2a;
+  border-radius: 4px 4px 0 0;
+}
+.strap-lug.left  { left: 28px; }
+.strap-lug.right { right: 28px; }
+
+/* ── Top bar ─────────────────────────────────────────── */
+.cam-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.brand {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: #777;
+  font-style: italic;
+}
+
+.led {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #333;
+  border: 1px solid #444;
+  transition: background 0.12s;
+}
+.led.on { background: var(--led-on); }
+
+.shutter {
+  width: 40px; height: 22px;
+  background: var(--shutter-color);
+  border-radius: 11px 11px 7px 7px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.08s;
+  outline: none;
+}
+.shutter::after {
+  content: '';
+  position: absolute;
+  top: 5px; left: 50%; transform: translateX(-50%);
+  width: 22px; height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+.shutter:active, .shutter.fired { transform: scaleY(0.78); }
+
+/* ── Viewfinder / screen ─────────────────────────────── */
+.viewfinder {
+  background: var(--screen-bg);
+  border-radius: 14px;
+  border: 2px solid #222;
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* corner brackets */
+.vf::before, .vf::after,
+.vf2::before, .vf2::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  border-color: #444;
+  border-style: solid;
+  z-index: 3;
+  pointer-events: none;
+}
+.vf::before  { top: 8px;  left: 8px;  border-width: 2px 0 0 2px; }
+.vf::after   { top: 8px;  right: 8px; border-width: 2px 2px 0 0; }
+.vf2::before { bottom: 8px; left: 8px;  border-width: 0 0 2px 2px; }
+.vf2::after  { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+/* flash white overlay */
+.flash-layer {
+  position: absolute;
+  inset: 0;
+  background: white;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+  transition: opacity 0.05s;
+}
+.flash-layer.flash { opacity: 1; }
+
+/* ── Idle screen ("take a picture") ─────────────────── */
+.idle-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.idle-icon {
+  width: 44px; height: 32px;
+  border: 2px solid #333;
+  border-radius: 5px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.idle-icon::before {
+  content: '';
+  position: absolute;
+  top: -7px; left: 50%; transform: translateX(-50%);
+  width: 14px; height: 7px;
+  background: #333;
+  border-radius: 3px 3px 0 0;
+}
+.idle-icon::after {
+  content: '';
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid #444;
+}
+
+.idle-text {
+  font-family: monospace;
+  font-size: 12px;
+  color: #444;
+  letter-spacing: 2px;
+}
+
+/* ── Letter mode (after first shot) ─────────────────── */
+.letter-screen { display: none; flex-direction: column; flex: 1; }
+.letter-screen.active { display: flex; }
+
+.datestamp {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--screen-green);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.letter-lines {
+  position: absolute;
+  inset: 14px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.letter-ta {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--screen-text);
+  font-family: 'Lora', serif;
+  caret-color: var(--stamp-color);
+  min-height: 160px;
+  position: relative;
+  z-index: 1;
+}
+.letter-ta::placeholder {
+  color: var(--screen-hint);
+  font-style: italic;
+}
+
+/* ── Camera bottom bar ───────────────────────────────── */
+.cam-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.wind-knob {
+  width: 34px; height: 34px;
+  background: #222;
+  border-radius: 50%;
+  border: 2px solid #333;
+  display: flex; align-items: center; justify-content: center;
+}
+.wind-inner {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  position: relative;
+}
+.wind-inner::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 12px; height: 1px;
+  background: #555;
+}
+
+.lens {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: #080808;
+  border: 3px solid #252525;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.lens::before {
+  content: '';
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: #040410;
+  border: 2px solid #151530;
+  position: absolute;
+}
+.lens::after {
+  content: '';
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #020206;
+  border: 1.5px solid #0a0a18;
+  position: absolute;
+}
+
+.frame-counter {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: monospace;
+  font-size: 14px;
+  color: var(--led-on);
+  letter-spacing: 3px;
+  min-width: 54px;
+  text-align: center;
+}
+
+/* ── Photo strip ─────────────────────────────────────── */
+.strip-wrap {
+  width: 400px;
+  margin-top: 2rem;
+  display: none;
+  flex-direction: column;
+}
+.strip-wrap.visible { display: flex; }
+
+.film-edge {
+  background: var(--film-bg);
+  height: 22px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+}
+.film-edge.top    { border-radius: 5px 5px 0 0; }
+.film-edge.bottom { border-radius: 0 0 5px 5px; }
+
+.sprocket {
+  width: 11px; height: 11px;
+  border-radius: 2px;
+  background: #000;
+  border: 1px solid #2a2a2a;
+  flex-shrink: 0;
+}
+.film-label {
+  flex: 1;
+  text-align: center;
+  font-family: monospace;
+  font-size: 9px;
+  color: var(--stamp-color);
+  letter-spacing: 3px;
+}
+
+/* Polaroid frame */
+.polaroid {
+  background: #f8f4ec;
+  padding: 14px 14px 44px;
+  border-left: 1px solid #ddd;
+  border-right: 1px solid #ddd;
+}
+
+/* ── Photo image ─────────────────────────────────────── */
+.photo-frame {
+  width: 100%;
+  min-height: 220px;
+  background: #ccc;
+  border: 1px solid #bbb;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Overlaid letter text on the photo */
+.photo-letter-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.photo-letter-card {
+  background: rgba(255, 253, 245, 0.88);
+  border: 1px solid rgba(200,169,110,0.6);
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-family: 'Lora', serif;
+  font-size: 12px;
+  color: #3a2e1a;
+  line-height: 1.7;
+  max-width: 88%;
+  max-height: 180px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+}
+
+.photo-caption {
+  margin-top: 10px;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: #8a6e3a;
+  text-align: center;
+  min-height: 18px;
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CAMERA
+     ============================================================ -->
+<div class="camera">
+  <div class="strap-lug left"></div>
+  <div class="strap-lug right"></div>
+
+  <!-- Top bar -->
+  <div class="cam-top">
+    <span class="brand">Lettrica</span>
+    <div class="led" id="led"></div>
+    <button class="shutter" id="shutterBtn" aria-label="Take a picture"></button>
+  </div>
+
+  <!-- Screen / viewfinder -->
+  <div class="viewfinder vf vf2">
+    <div class="flash-layer" id="flashLayer"></div>
+
+    <!-- Idle state shown before any photo is taken -->
+    <div class="idle-screen" id="idleScreen">
+      <div class="idle-icon"></div>
+      <span class="idle-text">take a picture</span>
+    </div>
+
+    <!-- Letter editing screen (shown after first shutter press) -->
+    <div class="letter-screen" id="letterScreen">
+      <div class="datestamp" id="datestamp"></div>
+
+      <!-- ============================================================
+           LETTER — replace the placeholder text inside the textarea
+           below with whatever you'd like her to read on screen.
+           You can use line breaks (\n) inside the HTML attribute or
+           just type directly inside the <textarea> tags.
+           ============================================================ -->
+      <textarea
+        class="letter-ta"
+        id="letterTa"
+        spellcheck="true"
+        placeholder="Dear ___,&#10;&#10;Write something worth developing..."
+      >helloooooo, yk, its been a blast meeting u. a roller coaster of an emotion but i loved every second of it, happy birthday and i want u to know that i love u so much and im so greatful that ur my partner in crime, my palangga, my bestfriend, my wife, my soulmate and my everything. im also very sorry for being hard on u sometimes and im thankful na u chose to stick around even tho im being hard on u (well sometimes hehe) but anyways, i love u and i just cant get enough of u and i would love to greet u a happy and a very best birthday i hope you'll be the same humble and down to earth April i know and i hope you will reach all ur goals in life i also wish that everything will actually go smoothly in ur life na (lord pahuwayi na sya give her a good school year please) once again happy birthday and best of luck for the future and i hope i can still be on that future😓 anyways, i love u and i hope you'll enjoy ur day. best of wishes from ur Misha</textarea>
+      <!-- ============================================================
+           END LETTER AREA
+           ============================================================ -->
+
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="cam-bottom">
+    <div class="wind-knob"><div class="wind-inner"></div></div>
+    <div class="lens"></div>
+    <div class="frame-counter" id="frameCounter">00</div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     PHOTO STRIP — appears after shutter is pressed
+     ============================================================ -->
+<div class="strip-wrap" id="stripWrap">
+
+  <div class="film-edge top">
+    <div class="sprocket"></div><div class="sprocket"></div>
+    <span class="film-label">LETTRICA ISO 400 ▸▸</span>
+    <div class="sprocket"></div><div class="sprocket"></div>
+  </div>
+
+  <div class="polaroid">
+    <div class="photo-frame">
+
+      <!-- ============================================================
+           PHOTO — replace the src below with the path to your image.
+
+           Examples:
+             src="photo.jpg"          (file in the same folder)
+             src="images/my-pic.jpg"  (file inside an images/ folder)
+
+           The image will be cropped to fill the frame automatically.
+           ============================================================ -->
+      <img id="photoImg" src="photo.jpg" alt="Your photo" onerror="this.style.display='none'">
+      <!-- ============================================================
+           END PHOTO
+           ============================================================ -->
+
+      <!-- Letter text overlaid on top of the photo -->
+      <div class="photo-letter-overlay">
+        <div class="photo-letter-card" id="photoLetterCard"></div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================
+         CAPTION — edit the text below to change the caption that
+         appears under the photo on the Polaroid.
+         ============================================================ -->
+    <div class="photo-caption" id="photoCaption">i love u so much</div>
+    <!-- ============================================================
+         END CAPTION
+         ============================================================ -->
+
+  </div>
+
+  <div class="film-edge bottom">
+    <div class="sprocket"></div><div class="sprocket"></div>
+    <span class="film-label" id="frameLabel">FRAME 01</span>
+    <div class="sprocket"></div><div class="sprocket"></div>
+  </div>
+
+</div>
+
+
+<script>
+  // ── Date stamp ───────────────────────────────────────────────
+  const months = ['Jan','Feb','Mar','Apr','May','Jun',
+                  'Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now = new Date();
+  document.getElementById('datestamp').textContent =
+    now.getFullYear() + '-' + months[now.getMonth()] + '-' +
+    String(now.getDate()).padStart(2,'0');
+
+  // ── State ────────────────────────────────────────────────────
+  let frames = 0;
+  let hasShot = false;
+
+  // ── Elements ─────────────────────────────────────────────────
+  const shutterBtn   = document.getElementById('shutterBtn');
+  const led          = document.getElementById('led');
+  const flashLayer   = document.getElementById('flashLayer');
+  const idleScreen   = document.getElementById('idleScreen');
+  const letterScreen = document.getElementById('letterScreen');
+  const letterTa     = document.getElementById('letterTa');
+  const frameCounter = document.getElementById('frameCounter');
+  const frameLabel   = document.getElementById('frameLabel');
+  const stripWrap    = document.getElementById('stripWrap');
+  const photoLetterCard = document.getElementById('photoLetterCard');
+  const photoCaption    = document.getElementById('photoCaption');
+
+  // ── Shutter press ────────────────────────────────────────────
+  shutterBtn.addEventListener('click', () => {
+    // First press: swap idle screen for letter screen
+    if (!hasShot) {
+      idleScreen.style.display = 'none';
+      letterScreen.classList.add('active');
+      hasShot = true;
+      letterTa.focus();
+      return; // first press just opens the screen, no photo yet
+    }
+
+    // Subsequent presses: flash + develop photo
+    shoot();
+  });
+
+  function shoot() {
+    // Flash
+    shutterBtn.classList.add('fired');
+    led.classList.add('on');
+    flashLayer.classList.add('flash');
+
+    setTimeout(() => flashLayer.classList.remove('flash'), 120);
+    setTimeout(() => { shutterBtn.classList.remove('fired'); led.classList.remove('on'); }, 800);
+
+    // Increment frame
+    frames++;
+    frameCounter.textContent = String(frames).padStart(2,'0');
+    frameLabel.textContent   = 'FRAME ' + String(frames).padStart(2,'0');
+
+    // Show the letter on the photo
+    const text = letterTa.value.trim();
+    photoLetterCard.textContent = text || '';
+    photoLetterCard.style.display = text ? 'block' : 'none';
+
+    // Reveal strip
+    stripWrap.classList.remove('visible');
+    setTimeout(() => stripWrap.classList.add('visible'), 180);
+  }
+</script>
+
+</body>
+</html>
